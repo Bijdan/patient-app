@@ -12,11 +12,11 @@ public class JweService : IJweService
             { "cty", contentType }
         };
 
-        return JWE.Encrypt(
-            plaintext: plaintext,
-            key: key,
-            alg: JweAlgorithm.DIR,
-            enc: JweEncryption.A256GCM,
-            extraHeaders: extraHeaders);
+        return JWE.EncryptBytes(
+            plaintext,
+            new[] { new JweRecipient(JweAlgorithm.DIR, key) },
+            JweEncryption.A256GCM,
+            mode: SerializationMode.Compact,
+            extraProtectedHeaders: extraHeaders);
     }
 }
