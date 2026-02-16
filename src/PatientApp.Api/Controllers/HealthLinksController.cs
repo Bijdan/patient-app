@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using PatientApp.Application.DTOs;
 using PatientApp.Application.Interfaces;
 
+using System.Text;
+using System.Text.Json;
+
 namespace PatientApp.Api.Controllers;
 
 [ApiController]
@@ -19,7 +22,7 @@ public class HealthLinksController : ControllerBase
 
     [HttpPost]
     [Consumes("application/json", "application/fhir+json")]
-    public async Task<ActionResult<SmartHealthLinkDto>> ProcessBundle()
+    public async Task<ActionResult> ProcessBundle()
     {
         using var reader = new StreamReader(Request.Body);
         var bundleJson = await reader.ReadToEndAsync();
@@ -29,7 +32,11 @@ public class HealthLinksController : ControllerBase
 
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
         var result = await _healthLinkService.ProcessBundleAsync(bundleJson, baseUrl);
-        return Ok(result);
+
+        var payloadJson = JsonSerializer.Serialize(result);
+        var encodedPayload = Convert.ToBase64String(Encoding.UTF8.GetBytes(payloadJson));
+
+        return Ok(new { link = $"shlink:/{encodedPayload}" });
     }
 
     [HttpGet("{id}")]

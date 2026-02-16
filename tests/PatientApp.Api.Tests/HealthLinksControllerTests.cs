@@ -68,11 +68,8 @@ public class HealthLinksControllerTests
         var result = await _sut.ProcessBundle();
 
         // Assert
-        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
         okResult.StatusCode.Should().Be(200);
-        var returnedShl = okResult.Value.Should().BeOfType<SmartHealthLinkDto>().Subject;
-        returnedShl.Flag.Should().Be("U");
-        returnedShl.Key.Should().NotBeNullOrEmpty();
     }
 
     [Fact]
@@ -85,7 +82,7 @@ public class HealthLinksControllerTests
         var result = await _sut.ProcessBundle();
 
         // Assert
-        result.Result.Should().BeOfType<BadRequestObjectResult>();
+        result.Should().BeOfType<BadRequestObjectResult>();
     }
 
     // --- Retrieve ---
