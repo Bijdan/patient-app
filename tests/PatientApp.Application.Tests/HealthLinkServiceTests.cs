@@ -24,6 +24,16 @@ public class HealthLinkServiceTests
         _fileStorage = Substitute.For<IFileStorageService>();
         _jweService = Substitute.For<IJweService>();
         _repository = Substitute.For<IHealthLinkSubmissionRepository>();
+
+        // Simulate MongoDB generating an Id on CreateAsync
+        _repository.When(r => r.CreateAsync(Arg.Any<HealthLinkSubmission>()))
+            .Do(ci =>
+            {
+                var submission = ci.Arg<HealthLinkSubmission>();
+                if (string.IsNullOrEmpty(submission.Id))
+                    submission.Id = "generated-id";
+            });
+
         _sut = new HealthLinkService(
             _fhirParser,
             _encryptionService,
@@ -117,6 +127,23 @@ public class HealthLinkServiceTests
     }
 
     [Fact]
+    public async Task Given_ValidBundle_When_ProcessBundleAsync_Then_UpdatesFilePathsAfterCreate()
+    {
+        // Arrange
+        _fhirParser.Parse(Arg.Any<string>()).Returns(CreateTestParseResult());
+        _encryptionService.Encrypt(Arg.Any<byte[]>(), Arg.Any<byte[]>())
+            .Returns(CreateTestEncryptionResult());
+
+        // Act
+        await _sut.ProcessBundleAsync("""{"resourceType": "Bundle"}""", "https://example.com");
+
+        // Assert
+        await _repository.Received(1).UpdateAsync(Arg.Is<HealthLinkSubmission>(s =>
+            s.BundleFilePath == "generated-id/bundle.enc" &&
+            s.PdfFilePath == "generated-id/document.enc"));
+    }
+
+    [Fact]
     public async Task Given_ValidBundle_When_ProcessBundleAsync_Then_ReturnsShlWithCorrectStructure()
     {
         // Arrange
@@ -131,7 +158,7 @@ public class HealthLinkServiceTests
         result.Flag.Should().Be("U");
         result.Key.Should().NotBeNullOrEmpty();
         result.Key.Should().HaveLength(43); // 32 bytes base64url-encoded = 43 chars
-        result.Url.Should().StartWith("https://example.com/api/v1/healthlinks/");
+        result.Url.Should().Be("https://example.com/api/v1/healthlinks/generated-id");
         result.Label.Should().Contain("Jessica Argonaut");
         result.Exp.Should().BeGreaterThan(0);
     }

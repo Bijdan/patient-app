@@ -105,8 +105,6 @@ public static class DependencyInjection
             BsonClassMap.RegisterClassMap<HealthLinkSubmission>(cm =>
             {
                 cm.AutoMap();
-                cm.MapIdMember(c => c.Id)
-                    .SetSerializer(new StringSerializer(BsonType.String));
             });
         }
     }

@@ -6,4 +6,5 @@ public interface IHealthLinkSubmissionRepository
 {
     Task CreateAsync(HealthLinkSubmission submission);
     Task<HealthLinkSubmission?> GetByIdAsync(string id);
+    Task UpdateAsync(HealthLinkSubmission submission);
 }

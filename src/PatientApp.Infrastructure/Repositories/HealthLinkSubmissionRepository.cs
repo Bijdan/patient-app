@@ -22,4 +22,9 @@ public class HealthLinkSubmissionRepository : IHealthLinkSubmissionRepository
     {
         return await _collection.Find(s => s.Id == id).FirstOrDefaultAsync();
     }
+
+    public async Task UpdateAsync(HealthLinkSubmission submission)
+    {
+        await _collection.ReplaceOneAsync(s => s.Id == submission.Id, submission);
+    }
 }
