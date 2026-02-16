@@ -11,6 +11,7 @@ using PatientApp.Domain.Common;
 using PatientApp.Domain.Entities;
 using PatientApp.Domain.Interfaces;
 using PatientApp.Infrastructure.Repositories;
+using PatientApp.Infrastructure.Services;
 using PatientApp.Infrastructure.Settings;
 
 namespace PatientApp.Infrastructure;
@@ -24,11 +25,25 @@ public static class DependencyInjection
         // Configure MongoDB class maps (keeps Domain entities free of MongoDB attributes)
         RegisterClassMaps();
 
-        // Bind settings
+        // Bind MongoDB settings
         var settings = configuration
             .GetSection("MongoDbSettings")
             .Get<MongoDbSettings>()
             ?? throw new InvalidOperationException("MongoDbSettings configuration is missing.");
+
+        // Bind file storage settings
+        var fileStorageSettings = configuration
+            .GetSection("FileStorageSettings")
+            .Get<FileStorageSettings>()
+            ?? throw new InvalidOperationException("FileStorageSettings configuration is missing.");
+        services.AddSingleton(fileStorageSettings);
+
+        // Bind health link settings
+        var healthLinkSettings = configuration
+            .GetSection("HealthLinkSettings")
+            .Get<HealthLinkSettings>()
+            ?? new HealthLinkSettings();
+        services.AddSingleton(healthLinkSettings);
 
         // Register MongoClient as singleton
         services.AddSingleton<IMongoClient>(_ => new MongoClient(settings.ConnectionString));
@@ -42,9 +57,24 @@ public static class DependencyInjection
 
         // Register repositories
         services.AddScoped<IPatientRepository, PatientRepository>();
+        services.AddScoped<IHealthLinkSubmissionRepository, HealthLinkSubmissionRepository>();
+
+        // Register infrastructure services
+        services.AddScoped<IFhirBundleParser, FhirBundleParser>();
+        services.AddScoped<IEncryptionService, AesGcmEncryptionService>();
+        services.AddSingleton<IFileStorageService, LocalFileStorageService>();
+        services.AddScoped<IJweService, JweService>();
 
         // Register application services
         services.AddScoped<IPatientService, PatientService>();
+        services.AddScoped<IHealthLinkService>(sp =>
+            new HealthLinkService(
+                sp.GetRequiredService<IFhirBundleParser>(),
+                sp.GetRequiredService<IEncryptionService>(),
+                sp.GetRequiredService<IFileStorageService>(),
+                sp.GetRequiredService<IJweService>(),
+                sp.GetRequiredService<IHealthLinkSubmissionRepository>(),
+                healthLinkSettings.DefaultExpiryHours));
 
         return services;
     }
@@ -67,6 +97,16 @@ public static class DependencyInjection
             BsonClassMap.RegisterClassMap<Patient>(cm =>
             {
                 cm.AutoMap();
+            });
+        }
+
+        if (!BsonClassMap.IsClassMapRegistered(typeof(HealthLinkSubmission)))
+        {
+            BsonClassMap.RegisterClassMap<HealthLinkSubmission>(cm =>
+            {
+                cm.AutoMap();
+                cm.MapIdMember(c => c.Id)
+                    .SetSerializer(new StringSerializer(BsonType.String));
             });
         }
     }
