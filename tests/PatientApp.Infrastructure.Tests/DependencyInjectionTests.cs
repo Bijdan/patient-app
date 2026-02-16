@@ -17,7 +17,8 @@ public class DependencyInjectionTests
         var inMemorySettings = new Dictionary<string, string?>
         {
             ["MongoDbSettings:ConnectionString"] = connectionString,
-            ["MongoDbSettings:DatabaseName"] = databaseName
+            ["MongoDbSettings:DatabaseName"] = databaseName,
+            ["FileStorageSettings:BasePath"] = "/tmp/test-health-links"
         };
 
         return new ConfigurationBuilder()
